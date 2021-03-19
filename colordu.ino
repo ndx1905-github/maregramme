@@ -71,7 +71,8 @@ void setup()
 void loop()
 {
 
-latestHighTide = 17,7;
+latestHighTide = 17,7;  // quelle est l'unité ? 
+// latestHighTide = 3 * byte1reçu + byte2reçu en min
 now = latestHighTide + 1;  
 
 maree = level [  int ( 2 * fmod ( now - latestHighTide , 24 ) )] ; 
