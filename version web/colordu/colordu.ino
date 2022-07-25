@@ -15,7 +15,7 @@ RST --> DTR
 
 const int marnage=8; //marnage -> amplitude affichage (nombre de leds)
 float dureeMaree=372.616667*719/720;  // duree -> estimation durée moyenne d'un cycle en minutes entre PM et BM et correction dérive 1 minute toutes les 12h
-int deltaMinutes=255*4 ;
+int deltaMinutes=255*3 ; // temps depuis la dernière marée est au max 373*2= 746. Valeur max transmise par le calculateur de maréee est 255. 3*255=765
 int UpdateTime=0 ;
 
 typedef struct
@@ -140,9 +140,9 @@ void ColorFill(unsigned char R,unsigned char G,unsigned char B)
 void setup()
 {
  
-  Wire.begin(0x09);                  // Start the I2C Bus with address 9 in decimal (= 0x09 in hexadecimal) / innitialisation du bus I2C avec comme adresse 9 en decimal soit 0x09 en hexadecimal
+  Wire.begin(0x09);                 // initialisation du bus I2C avec comme adresse 9 en decimal soit 0x09 en hexadecimal
 
-  Wire.onReceive(receiveEvent);   // Attach a function to trigger when something is received / Attacher une fonction a declencher lorsque quelque chose est recu
+  Wire.onReceive(receiveEvent);   //  Attacher une fonction a declencher lorsque quelque chose est recu
 
   Serial.begin(9600);
   Colorduino.Init();  
@@ -171,8 +171,8 @@ Serial.print("code a l'adresse http://ndef.free.fr/maregramme.ino");
 }
 
 void receiveEvent() {
-  deltaMinutes = Wire.read()*4 ;                // read one character from the I2C / lire le caractere recu sur le bus I2C
-  UpdateTime = int(millis()/60000) ;
+  deltaMinutes = Wire.read()*3 ;                // lire le caractere recu sur le bus I2C
+  UpdateTime = int(millis()/60000) ;            // temps depuis initialisation
 }
 
 void loop()
@@ -182,13 +182,13 @@ void loop()
  
   
 plasma_morph();
-plage(deltaMinutes); 
+plage(deltaMinutes); // fonction qui affiche la hauteur de plage-sable
 
 delay (160);
 
-if ( deltaMinutes == 255*4 || abs ( UpdateTime - int ( millis () / 60000 ) > 60) ) {
+if ( deltaMinutes == 255*3 || abs ( UpdateTime - int ( millis () / 60000 ) > 60) ) {    // au debut et si on n'a pas recu de mise a jour depuis plus de x min
     for (int j = 0 ; j < 8 ; j++) { 
-        for (int i = 0 ; i < 8 ; i++) {Colorduino.SetPixel(i,j,30,30,30);} // colonne de séparation
+        for (int i = 0 ; i < 8 ; i++) {Colorduino.SetPixel(i,j,30,30,30);} // alors on affiche un ecran gris
         }
     }
 
@@ -198,26 +198,26 @@ Colorduino.FlipPage();
 
 int hauteur(int deltaMinutes)
 {
-  return round(8-marnage*sq(sin(radians(90*deltaMinutes/dureeMaree))));
+  return round(8-marnage*sq(sin(radians(90*deltaMinutes/dureeMaree))));  // hauteur d'eau sur une echelle de 8
 }
 
 void plage(int deltaMinutes)
 {
 
-//d'abord colonne de gauche i=0
+//d'abord colonne de gauche i=0 soit maintenant
 for (int j = hauteur(deltaMinutes+60*0) ; j < 8 ; j++) {
    Colorduino.SetPixel(0,j,255,255,25); // jaune foncé
     }
 
-//puis i=1  neutralisé en colonne noire
+//puis i=1  neutralisé en colonne noire, mais pourrait afficher la force du coefficient
 for (int j = 0 ; j < 8 ; j++) { Colorduino.SetPixel(1,j,0,0,0);} // colonne de séparation
 
-//et enfin i=2 à 7 qui affiche en réalité i=1 à 6
+//et enfin i=2 à 7 qui affiche en réalité i=1 à 6 soit maree dans une heure, deux heures etc.
 for (int i = 1 ; i < 7 ; i++) {
   if (hauteur(deltaMinutes+60*i)==constrain(hauteur(deltaMinutes+60*i),0,7))
   {
   for (int j = hauteur(deltaMinutes+60*i) ; j < 8 ; j++) {
-    Colorduino.SetPixel(i+1,j,255,255,25); // jaune foncé
+    Colorduino.SetPixel(i+1,j,255,255,25); // jaune foncé pour le sable
     }
   } 
 }
