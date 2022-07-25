@@ -1,3 +1,25 @@
+ /*
+  ColorduinoPlasma - Plasma demo using Colorduino Library for Arduino
+  Copyright (c) 2011 Sam C. Lin lincomatic@hotmail.com ALL RIGHTS RESERVED
+  based on  Color cycling plasma   
+    Version 0.1 - 8 July 2009
+    Copyright (c) 2009 Ben Combee.  All right reserved.
+    Copyright (c) 2009 Ken Corey.  All right reserved.
+    Copyright (c) 2008 Windell H. Oskay.  All right reserved.
+    Copyright (c) 2011 Sam C. Lin All Rights Reserved
+  This demo is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+  This demo is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 /*
 Pour programmer le colorduino, utiliser une arduino uno dont on a enlevé la puce
 utiliser les branchements 
@@ -11,7 +33,7 @@ RST --> DTR
 */
 
 #include <Colorduino.h>
-#include <Wire.h> 
+#include <Wire.h>  // connexion serie avec le calculateur de maree
 
 const int marnage=8; //marnage -> amplitude affichage (nombre de leds)
 float dureeMaree=372.616667*719/720;  // duree -> estimation durée moyenne d'un cycle en minutes entre PM et BM et correction dérive 1 minute toutes les 12h
@@ -25,6 +47,7 @@ typedef struct
   unsigned char b;
 } ColorRGB;
 
+//a color with 3 components: h, s and v
 typedef struct 
 {
   unsigned char h;
@@ -32,6 +55,7 @@ typedef struct
   unsigned char v;
 } ColorHSV;
 
+// increase the scaling of the plasma to see more details of the color transition.
 unsigned char plasma[ColorduinoScreenWidth][ColorduinoScreenHeight];
 long paletteShift;
 
@@ -48,17 +72,18 @@ void HSVtoRGB(void *vRGB, void *vHSV)
   s = (float)(colorHSV->s / 256.0);
   v = (float)(colorHSV->v / 256.0);
 
+//if saturation is 0, the color is a shade of grey
   if(s == 0.0) {
     b = v;
     g = b;
     r = g;
   }
-
+//if saturation > 0, more complex calculations are needed
   else
   {
-    h *= 6.0; 
-    i = (int)(floor(h));
-    f = h - i;
+    h *= 6.0; //to bring hue to a number between 0 and 6, better for the calculations
+    i = (int)(floor(h)); //e.g. 2.7 becomes 2 and 3.01 becomes 3 or 4.9999 becomes 4
+    f = h - i; //the fractional part of h
 
     p = (float)(v * (1.0 - s));
     q = (float)(v * (1.0 - (s * f)));
@@ -79,6 +104,7 @@ void HSVtoRGB(void *vRGB, void *vHSV)
   colorRGB->r = (int)(min(r,g) * 15.0);           //  A bidouiller
   colorRGB->g = (int)(g * 45.0);                  //  pour modifier
   colorRGB->b = (int)(max(max(r,g),b) * 155.0);   //  la couleur de la mer
+
 }
 
 unsigned int RGBtoINT(void *vRGB)
@@ -147,10 +173,11 @@ void setup()
   Serial.begin(9600);
   Colorduino.Init();  
 
-  unsigned char whiteBalVal[3] = {1,4,4}; // balance des blancs {14,63,63}
+  unsigned char whiteBalVal[3] = {14,63,63}; // balance des blancs {14,63,63} OU {1,4,4} moins lumineux
   Colorduino.SetWhiteBal(whiteBalVal);
   
-  
+//  deltaMinutes = 240 ; // test valeur
+   
   paletteShift=128000;
   unsigned char bcolor;
 
@@ -165,32 +192,32 @@ void setup()
       ) / 2;
       plasma[x][y] = bcolor;
     }
-
-Serial.print("code a l'adresse http://ndef.free.fr/maregramme.ino");
     
 }
 
 void receiveEvent() {
   deltaMinutes = Wire.read()*3 ;                // lire le caractere recu sur le bus I2C
-  UpdateTime = int(millis()/60000) ;            // temps depuis initialisation
+ // UpdateTime = int(millis()/60000) ;            // minutes depuis derniere valeur recue
 }
 
 void loop()
 {
 
-//deltaMinutes = deltaUpdate ; //+ int(millis()/60000) ; 
- 
+//deltaMinutes = deltaMinutes + int(millis()/60000) - UpdateTime ; 
+
   
 plasma_morph();
 plage(deltaMinutes); // fonction qui affiche la hauteur de plage-sable
 
 delay (160);
 
+/*
 if ( deltaMinutes == 255*3 || abs ( UpdateTime - int ( millis () / 60000 ) > 60) ) {    // au debut et si on n'a pas recu de mise a jour depuis plus de x min
     for (int j = 0 ; j < 8 ; j++) { 
         for (int i = 0 ; i < 8 ; i++) {Colorduino.SetPixel(i,j,30,30,30);} // alors on affiche un ecran gris
         }
     }
+*/
 
 Colorduino.FlipPage(); 
 
